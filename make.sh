@@ -1,35 +1,20 @@
 #!/bin/bash
+set -e
 
-IDL_ROOT="./idl"
-INCLUDE_ROOT="./include"
+BUILD_DIR="build"
 
-# 遍历所有idl文件
-find "$IDL_ROOT" -name "*.idl" | while read -r idl_file; do
-    # 提取包名和消息类型路径
-    rel_path="${idl_file#$IDL_ROOT/}"      # geometry_msgs/msg/PolygonStamped.idl
-    dir_path=$(dirname "$rel_path")       # geometry_msgs/msg
-    file_name=$(basename "$idl_file")     # PolygonStamped.idl
-    base_name="${file_name%.idl}"         # PolygonStamped
+# 创建构建目录
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
 
-    # 创建对应的include文件夹
-    out_dir="$INCLUDE_ROOT/$dir_path"
-    mkdir -p "$out_dir"
+# 生成 Makefile
+cmake ..
 
-    # 执行fastddsgen
-    echo "Generating $idl_file -> $out_dir"
-    fastddsgen -cs -typeros2 -I "$IDL_ROOT" -d "$out_dir" "$idl_file"
-done
+# 编译
+make -j$(nproc)
 
-# 清理include中多余文件
-echo "Cleaning up include directory..."
-find "$INCLUDE_ROOT" -type f | while read -r inc_file; do
-    # 生成对应的idl路径
-    rel_path="${inc_file#$INCLUDE_ROOT/}"
-    base_name=$(basename "$rel_path" | sed 's/\(PubSubTypes\)\?\.\(h\|cxx\)//g')
-    idl_file_candidate="$IDL_ROOT/$(dirname "$rel_path")/$base_name.idl"
+# 可执行文件名，根据 CMakeLists.txt 改
+EXECUTABLE="apa_fastdds"
 
-    if [ ! -f "$idl_file_candidate" ]; then
-        echo "Removing extra file: $inc_file"
-        rm -f "$inc_file"
-    fi
-done
+# 运行程序
+./$EXECUTABLE
