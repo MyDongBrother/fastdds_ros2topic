@@ -1,7 +1,0 @@
-module base_interfaces {
-  module msg {
-    struct HelloWorld {
-      string data;
-    };
-  };
-};

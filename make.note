@@ -1,3 +1,0 @@
-colcon build --packages-select fastdds_demo
-
-colcon build --packages-select base_interfaces

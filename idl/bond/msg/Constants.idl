@@ -1,0 +1,20 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from bond/msg/Constants.msg
+// generated code does not contain a copyright notice
+
+
+module bond {
+  module msg {
+    module Constants_Constants {
+      const float DEAD_PUBLISH_PERIOD = 0.05;
+      const float DEFAULT_CONNECT_TIMEOUT = 10.0;
+      const float DEFAULT_HEARTBEAT_TIMEOUT = 4.0;
+      const float DEFAULT_DISCONNECT_TIMEOUT = 2.0;
+      const float DEFAULT_HEARTBEAT_PERIOD = 1.0;
+      const string DISABLE_HEARTBEAT_TIMEOUT_PARAM = "/bond_disable_heartbeat_timeout";
+    };
+    struct Constants {
+      uint8 structure_needs_at_least_one_member;
+    };
+  };
+};

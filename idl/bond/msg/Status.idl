@@ -1,0 +1,30 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from bond/msg/Status.msg
+// generated code does not contain a copyright notice
+
+#include "std_msgs/msg/Header.idl"
+
+module bond {
+  module msg {
+    struct Status {
+      std_msgs::msg::Header header;
+
+      @verbatim (language="comment", text=
+        "ID of the bond")
+      string id;
+
+      @verbatim (language="comment", text=
+        "Unique ID for an individual in a bond")
+      string instance_id;
+
+      boolean active;
+
+      @verbatim (language="comment", text=
+        "Including the timeouts for the bond makes it easier to debug mis-matches" "\n"
+        "between the two sides.")
+      float heartbeat_timeout;
+
+      float heartbeat_period;
+    };
+  };
+};
