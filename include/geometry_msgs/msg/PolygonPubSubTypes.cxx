@@ -32,7 +32,7 @@ namespace geometry_msgs {
     namespace msg {
         PolygonPubSubType::PolygonPubSubType()
         {
-            setName("geometry_msgs::msg::Polygon");
+            setName("geometry_msgs::msg::dds_::Polygon_");
             auto type_size = Polygon::getMaxCdrSerializedSize();
             type_size += eprosima::fastcdr::Cdr::alignment(type_size, 4); /* possible submessage alignment */
             m_typeSize = static_cast<uint32_t>(type_size) + 4; /*encapsulation*/

@@ -32,7 +32,7 @@ namespace geometry_msgs {
     namespace msg {
         PolygonStampedPubSubType::PolygonStampedPubSubType()
         {
-            setName("geometry_msgs::msg::PolygonStamped");
+            setName("geometry_msgs::msg::dds_::PolygonStamped_");
             auto type_size = PolygonStamped::getMaxCdrSerializedSize();
             type_size += eprosima::fastcdr::Cdr::alignment(type_size, 4); /* possible submessage alignment */
             m_typeSize = static_cast<uint32_t>(type_size) + 4; /*encapsulation*/

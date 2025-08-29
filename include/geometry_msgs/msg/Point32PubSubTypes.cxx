@@ -32,7 +32,7 @@ namespace geometry_msgs {
     namespace msg {
         Point32PubSubType::Point32PubSubType()
         {
-            setName("geometry_msgs::msg::Point32");
+            setName("geometry_msgs::msg::dds_::Point32_");
             auto type_size = Point32::getMaxCdrSerializedSize();
             type_size += eprosima::fastcdr::Cdr::alignment(type_size, 4); /* possible submessage alignment */
             m_typeSize = static_cast<uint32_t>(type_size) + 4; /*encapsulation*/
