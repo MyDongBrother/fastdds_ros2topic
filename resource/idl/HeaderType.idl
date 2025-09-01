@@ -1,10 +1,11 @@
+
+
+#include "TimeType.idl"
 module apa_msgs {
   module msg {
     struct Header {
-      int32 sec;
-      uint32 nanosec;
+      Time stamp;
       string frame_id;
-      string str_msg;
     };
   };
 };

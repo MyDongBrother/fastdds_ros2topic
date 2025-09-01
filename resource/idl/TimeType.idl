@@ -1,0 +1,9 @@
+
+module apa_msgs {
+  module msg {
+    struct Time {
+      int32 sec;
+      uint32 nanosec;
+    };
+  };
+};

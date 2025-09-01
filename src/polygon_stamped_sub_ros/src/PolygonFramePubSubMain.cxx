@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <unistd.h>
 #include "rclcpp/rclcpp.hpp"
-#include "PolygonStampedSubscriber.h"
+#include "PolygonFrameSubscriber.h"
 #include "geometry_msgs/msg/polygon_stamped.hpp"
 
 class ROS2PolygonPublisher : public rclcpp::Node
@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     rclcpp::init(argc, argv);
     auto node = std::make_shared<ROS2PolygonPublisher>();
 
-    PolygonStampedSubscriber mysub;
+    PolygonFrameSubscriber mysub;
     if (!mysub.init())
     {
         std::cout << "FastDDS init fail." << std::endl;
@@ -39,10 +39,8 @@ int main(int argc, char **argv)
     while (rclcpp::ok())
     {
         geometry_msgs::msg::PolygonStamped ros_msg;
-        mysub.run(ros_msg); // 返回自定义 PolygonStamped 数据结构
-
+        mysub.run(ros_msg);
         node->PublishFootprints(ros_msg);
-
         rclcpp::spin_some(node);
         rate.sleep();
     }

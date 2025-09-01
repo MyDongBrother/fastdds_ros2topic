@@ -58,15 +58,18 @@ while IFS= read -r line; do
         fi
     fi
 
-    # 修改 add_library(xx_lib ...) → add_library(xx_lib SHARED ...) 并记录库名
     if [[ $line =~ ^add_library\(([^[:space:]]+_lib)[[:space:]] ]]; then
-        libname="${BASH_REMATCH[1]}"
+        libname="${BASH_REMATCH[1]}"  # 保留 _lib
         lib_targets+=("$libname")
         echo "替换 $libname 为 SHARED 库"
-        line=$(echo "$line" | sed -E "s/^add_library\(($libname)[[:space:]]/add_library(\1 SHARED /")
-    fi
 
+        # 替换成 SHARED 并追加 PubSubType 文件
+        line=$(echo "$line" | sed -E "s/^add_library\([[:space:]]*[^[:space:]]+[[:space:]]+/add_library($libname SHARED /; s/\)$/ ${libname%_lib}PubSubTypes.cxx)/")
+
+        echo "修改后的 add_library: $line"
+    fi
     echo "$line" >> "$TMP_FILE"
+
 done < "$CMAKE_FILE"
 
 mv "$TMP_FILE" "$CMAKE_FILE"

@@ -4,45 +4,36 @@ project(polygon_stamped_sub_ros)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
+# 头文件路径
+include_directories(
+    include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../output/include
+)
+# 搜索所有动态库
+file(GLOB THIRD_PARTY_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/../../output/lib/x86/*.so")
+# 找 Fast DDS
+find_package(fastrtps REQUIRED)
+find_package(fastcdr REQUIRED)
 
-# Fast DDS 安装路径
-set(FASTDDS_INCLUDE_DIR "/opt/fastdds/include")
-set(FASTDDS_LIB_DIR     "/opt/fastdds/lib")
-
-# 源文件 + Fast DDS 生成文件
-file(GLOB_RECURSE SRC_FILES
-    src/*.cpp
-    src/*.cxx
-    generated/*.cxx
+add_executable(polygon_stamped_sub_ros
+    src/PolygonFrameSubscriber.cxx
+    src/PolygonFramePubSubMain.cxx
 )
 
-add_executable(polygon_stamped_sub ${SRC_FILES})
-
-# ROS 2 依赖
-ament_target_dependencies(polygon_stamped_sub
+# 依赖 ROS2
+ament_target_dependencies(polygon_stamped_sub_ros
     rclcpp
     geometry_msgs
 )
 
-# Fast DDS include + generated 头文件
-target_include_directories(polygon_stamped_sub PUBLIC
-    ${FASTDDS_INCLUDE_DIR}
-    /home/bmi-jiandong/workspace/fastdds_ros2topic/generated
-    /home/bmi-jiandong/workspace/fastdds_ros2topic/generated/geometry_msgs/msg
-)
-
-# Fast DDS 库
-target_link_directories(polygon_stamped_sub PUBLIC
-    ${FASTDDS_LIB_DIR}
-)
-
-target_link_libraries(polygon_stamped_sub
+# 链接 Fast DDS 库
+target_link_libraries(polygon_stamped_sub_ros
     fastrtps
     fastcdr
+    ${THIRD_PARTY_LIBS}
 )
 
-install(TARGETS
-  polygon_stamped_sub
+install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
