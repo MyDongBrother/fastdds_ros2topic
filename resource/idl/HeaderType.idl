@@ -1,0 +1,10 @@
+module apa_msgs {
+  module msg {
+    struct Header {
+      int32 sec;
+      uint32 nanosec;
+      string frame_id;
+      string str_msg;
+    };
+  };
+};

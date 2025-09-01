@@ -1,0 +1,18 @@
+// 用来定义一个多边形的数据包
+
+#include "Point2DType.idl"
+#include "HeaderType.idl"
+
+module apa_msgs {
+  module msg {
+    @verbatim (language="comment", text=
+      "这表示一个带有参考坐标帧和时间戳的多边形" "\n"
+      )
+    struct PolygonFrame {
+
+      Header header;
+
+      sequence<Point2D> points;
+    };
+  };
+};
