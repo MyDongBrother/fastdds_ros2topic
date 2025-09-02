@@ -1,6 +1,6 @@
 .vscode/settings.json
 install/
-build/
+build*/
 log/
 temp/
 .vscode/c_cpp_properties.json
