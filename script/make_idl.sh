@@ -1,6 +1,44 @@
 #!/bin/bash
 set -e
 
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <CPU_TYPE: x86|arm|ndk>"
+    exit 1
+fi
+
+CPU_TYPE="$1"
+
+### 交叉编译环境设置
+BUILD_SUBDIR=""
+case "$CPU_TYPE" in
+    arm|ARM)
+        export PATH=/opt/gcc-linaro-6.5.0-2018.12-x86_64_aarch64-linux-gnu/bin:$PATH
+        export LD_LIBRARY_PATH=/opt/gcc-linaro-6.5.0-2018.12-x86_64_aarch64-linux-gnu/lib:$LD_LIBRARY_PATH
+        export CC=aarch64-linux-gnu-gcc
+        export CXX=aarch64-linux-gnu-g++
+        BUILD_SUBDIR="build_arm"
+        LIB_SUBDIR="lib/arm"
+        ;;
+    x86|X86)
+        export CC=gcc
+        export CXX=g++
+        BUILD_SUBDIR="build_x86"
+        LIB_SUBDIR="lib/x86"
+        ;;
+    ndk|NDK)
+        export NDK_HOME=/opt/android-ndk-r26b
+        export PATH=$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+        export CC=aarch64-linux-android31-clang
+        export CXX=aarch64-linux-android31-clang++
+        BUILD_SUBDIR="build_ndk"
+        LIB_SUBDIR="lib/ndk"
+        ;;
+    *)
+        echo "Unknown CPU type: $CPU_TYPE"
+        exit 1
+        ;;
+esac
+
 ### 目录准备
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 IDL_FILE="$BASE_DIR/resource/idl/PolygonFrame.idl"
@@ -9,91 +47,111 @@ OUTPUT_DIR="$BASE_DIR/output"
 
 mkdir -p "$TEMP_DIR"
 mkdir -p "$OUTPUT_DIR/include"
-mkdir -p "$OUTPUT_DIR/lib/x86"
+mkdir -p "$OUTPUT_DIR/$LIB_SUBDIR"
 
 ### 使用 fastddsgen 生成
 echo "生成 fastddsgen 文件..."
+# fastddsgen -cs -example armLinux2.6gcc -replace -I "$BASE_DIR/resource/idl" -d "$TEMP_DIR" "$IDL_FILE"
 fastddsgen -cs -example CMake -replace -I "$BASE_DIR/resource/idl" -d "$TEMP_DIR" "$IDL_FILE"
 
-### 处理cmake文件,生成动态库
+### 处理 CMakeLists.txt
 cd $TEMP_DIR
 
 CMAKE_FILE="CMakeLists.txt"
 TMP_FILE="CMakeLists.tmp"
 
 rm -f "$TMP_FILE"
+while IFS= read -r line; do
+    # 跳过 find_package 行
+    if [[ $line =~ ^find_package\(fastcdr ]] || [[ $line =~ ^find_package\(fastrtps ]]; then
+        continue
+    fi
 
-# 临时变量记录要跳过的 target
+    # 写入新行
+    echo "$line" >> "$TMP_FILE"
+done < "$CMAKE_FILE"
+
+# 在 TMP_FILE 找到 "# Find requirements" 行后插入新的 include/link 指定
+
+case "$CPU_TYPE" in
+    x86|X86)
+sed -i '/# Find requirements/a \
+# 指定 FastDDS 的 include 和 lib 目录\n\
+set(FASTDDS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../fastdds/x86/include")\n\
+set(FASTDDS_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/../fastdds/x86/lib")\n\
+\n\
+include_directories(${FASTDDS_INCLUDE_DIR})\n\
+link_directories(${FASTDDS_LIBRARY_DIR})' "$TMP_FILE"
+        ;;
+    ndk|NDK)
+sed -i '/# Find requirements/a \
+# 指定 FastDDS 的 include 和 lib 目录\n\
+set(FASTDDS_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../fastdds/ndk/include")\n\
+set(FASTDDS_LIBRARY_DIR "${CMAKE_SOURCE_DIR}/../fastdds/ndk/lib")\n\
+\n\
+include_directories(${FASTDDS_INCLUDE_DIR})\n\
+link_directories(${FASTDDS_LIBRARY_DIR})' "$TMP_FILE"
+        ;;
+    *)
+        echo "Unknown CPU type: $CPU_TYPE"
+        exit 1
+        ;;
+esac
+
+# 替换原文件
+mv "$TMP_FILE" "$CMAKE_FILE"
+
 skip_target=""
 skipping_exec=0
 skipping_tll=0
 lib_targets=()
 
 while IFS= read -r line; do
-    # 删除对应的 add_executable
     if [[ $line =~ ^add_executable\(([^[:space:]]+) ]]; then
         skip_target="${BASH_REMATCH[1]}"
-        echo "删除 add_executable(${skip_target} ... )"
         skipping_exec=1
         continue
     elif [[ $skipping_exec -eq 1 ]]; then
-        if [[ $line =~ \) ]]; then
-            skipping_exec=0
-        fi
+        [[ $line =~ \) ]] && skipping_exec=0
         continue
     fi
 
-    # 删除对应的 target_link_libraries
     if [[ -n $skip_target ]]; then
         if [[ $line =~ ^target_link_libraries\(${skip_target}[[:space:]] ]]; then
-            echo "删除 target_link_libraries(${skip_target} ... )"
             skipping_tll=1
             continue
         elif [[ $skipping_tll -eq 1 ]]; then
-            if [[ $line =~ \) ]]; then
-                skipping_tll=0
-                skip_target=""
-            fi
+            [[ $line =~ \) ]] && { skipping_tll=0; skip_target=""; }
             continue
         fi
     fi
 
     if [[ $line =~ ^add_library\(([^[:space:]]+_lib)[[:space:]] ]]; then
-        libname="${BASH_REMATCH[1]}"  # 保留 _lib
+        libname="${BASH_REMATCH[1]}"
         lib_targets+=("$libname")
-        echo "替换 $libname 为 SHARED 库"
-
-        # 替换成 SHARED 并追加 PubSubType 文件
         line=$(echo "$line" | sed -E "s/^add_library\([[:space:]]*[^[:space:]]+[[:space:]]+/add_library($libname SHARED /; s/\)$/ ${libname%_lib}PubSubTypes.cxx)/")
-
-        echo "修改后的 add_library: $line"
     fi
-    echo "$line" >> "$TMP_FILE"
 
+    echo "$line" >> "$TMP_FILE"
 done < "$CMAKE_FILE"
 
 mv "$TMP_FILE" "$CMAKE_FILE"
 
-# 在 CMakeLists.txt 末尾追加 install 规则
+# 添加 install 规则
 cat >> "$CMAKE_FILE" <<EOF
 
-# 安装路径设置到 output 目录
 set(CMAKE_INSTALL_PREFIX "\${CMAKE_SOURCE_DIR}/../output" CACHE PATH "Install path" FORCE)
 
-# 安装所有 *_lib 动态库到 lib/x86
 install(TARGETS ${lib_targets[*]}
-    LIBRARY DESTINATION lib/x86
-    ARCHIVE DESTINATION lib/x86
+    LIBRARY DESTINATION $LIB_SUBDIR
+    ARCHIVE DESTINATION $LIB_SUBDIR
     RUNTIME DESTINATION bin
 )
 
-# 安装对应的头文件
 EOF
 
 for lib in "${lib_targets[@]}"; do
-    # 提取去掉 _lib 的前缀
     base_name="${lib%_lib}"
-    # 安装头文件
     cat >> "$CMAKE_FILE" <<EOF
 install(FILES \${CMAKE_CURRENT_SOURCE_DIR}/${base_name}.h
               \${CMAKE_CURRENT_SOURCE_DIR}/${base_name}PubSubTypes.h
@@ -101,17 +159,15 @@ install(FILES \${CMAKE_CURRENT_SOURCE_DIR}/${base_name}.h
 EOF
 done
 
-echo "✅ 更新完成：CMakeLists.txt (含 install 规则)"
-
 ### 编译安装
-echo "开始编译..."
-cd "$TEMP_DIR"
-mkdir -p build && cd build
-rm -rf *
+mkdir -p "$TEMP_DIR/$BUILD_SUBDIR"
+cd "$TEMP_DIR/$BUILD_SUBDIR"
 cmake ..
 make -j$(nproc)
 make install
-echo "✅ 编译并安装完成：$OUTPUT_DIR/lib/x86"
 
-### 删除temp文件夹
-rm -r $TEMP_DIR
+### 清理
+# rm -rf "$TEMP_DIR"
+
+echo "✅ 编译并安装完成：$OUTPUT_DIR/$LIB_SUBDIR"
+
