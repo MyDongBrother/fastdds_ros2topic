@@ -4,3 +4,4 @@ build*/
 log/
 temp/
 .vscode/c_cpp_properties.json
+fastdds/
